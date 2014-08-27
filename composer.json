@@ -1,0 +1,17 @@
+{
+    "name": "wusuopu/php-rabbitmq-tool",
+    "authors": [
+        {
+            "name": "wusuopu",
+            "email": "admin@longchangjin.cn"
+        }
+    ],
+    "require": {
+        "symfony/console": "2.5.*",
+        "symfony/finder": "2.5.*",
+        "videlalvaro/php-amqplib": "2.4.*"
+    },
+    "autoload": {
+        "psr-4": { "Wusuopu\\": "src/" }
+    }
+}
