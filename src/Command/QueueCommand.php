@@ -16,31 +16,75 @@ class QueueCommand extends Command
 {
     use MQTrait;
 
+    // "queue_bind"
+    // "queue_unbind"
+    // "queue_declare"
+    // "queue_delete"
+    // "queue_purge"
+
     protected function configure()
     {
         $this->setName('mq:queue')->setDescription('rabbitmq queue manage.');
         $this->parseArguments();
         $this->addOption('queue', null, InputOption::VALUE_OPTIONAL, 'RabbitMQ queue name')
-            ->addOption('passive', null, InputOption::VALUE_OPTIONAL, 'RabbitMQ queue passive', false)
-            ->addOption('durable', null, InputOption::VALUE_OPTIONAL, 'RabbitMQ queue durable', false)
-            ->addOption('exclusive', null, InputOption::VALUE_OPTIONAL, 'RabbitMQ queue exclusive', false)
-            ->addOption('auto_delete', null, InputOption::VALUE_OPTIONAL, 'RabbitMQ queue auto_delete', false)
-            ->addOption('nowait', null, InputOption::VALUE_OPTIONAL, 'RabbitMQ queue nowait', false);
+            ->addOption('exchange', null, InputOption::VALUE_OPTIONAL, 'RabbitMQ exchange name')
+            ->addOption('route', null, InputOption::VALUE_OPTIONAL, 'RabbitMQ route name', "")
+            ->addOption('passive', null, InputOption::VALUE_NONE, 'RabbitMQ queue passive')
+            ->addOption('durable', null, InputOption::VALUE_NONE, 'RabbitMQ queue durable')
+            ->addOption('exclusive', null, InputOption::VALUE_NONE, 'RabbitMQ queue exclusive')
+            ->addOption('auto_delete', null, InputOption::VALUE_NONE, 'RabbitMQ queue auto_delete')
+            ->addOption('if_unused', null, InputOption::VALUE_NONE, 'RabbitMQ queue if unused')
+            ->addOption('if_empty', null, InputOption::VALUE_NONE, 'RabbitMQ queue if empty')
+            ->addOption('nowait', null, InputOption::VALUE_NONE, 'RabbitMQ queue nowait');
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function cmdQueueBind($input, $output)
     {
-        $cmd = $input->getArgument('cmd');
-        $func = "cmd$cmd";
+        $queue = $input->getOption('queue');
+        $exchange = $input->getOption('exchange');
+        $route = $input->getOption('route');
+        $nowait = $input->getOption('nowait');
 
-        if (!method_exists($this, $func)) {
-            echo "'$cmd' operation is not exists.\n";
-            exit(1);
+        if (empty($queue)) {
+            $output->writeln("<error>The queue name must not be empty!</error>");
+
+            return;
         }
+        if (empty($exchange)) {
+            $output->writeln("<error>The exchange name must not be empty!</error>");
 
-        $this->connectRabbit($input, $output);
-        $this->$func($input, $output);
-        $this->closeRabbit();
+            return;
+        }
+        try {
+            $this->channel->queue_bind($queue, $exchange, $route, $nowait);
+            $output->writeln("<info>bind queue '$queue' with '$exchange' in '$route'.</info>");
+        } catch (\Exception $e) {
+            $output->writeln("<error>" . $e->getMessage() . "</error>");
+        }
+    }
+
+    protected function cmdQueueUnbind($input, $output)
+    {
+        $queue = $input->getOption('queue');
+        $exchange = $input->getOption('exchange');
+        $route = $input->getOption('route');
+
+        if (empty($queue)) {
+            $output->writeln("<error>The queue name must not be empty!</error>");
+
+            return;
+        }
+        if (empty($exchange)) {
+            $output->writeln("<error>The exchange name must not be empty!</error>");
+
+            return;
+        }
+        try {
+            $this->channel->queue_unbind($queue, $exchange, $route);
+            $output->writeln("<info>unbind queue '$queue' with '$exchange' in '$route'.</info>");
+        } catch (\Exception $e) {
+            $output->writeln("<error>" . $e->getMessage() . "</error>");
+        }
     }
 
     protected function cmdQueueDeclare($input, $output)
@@ -60,6 +104,44 @@ class QueueCommand extends Command
         try {
             $this->channel->queue_declare($queue, $passive, $durable, $exclusive, $autoDelete, $nowait);
             $output->writeln("<info>declare queue '$queue'.</info>");
+        } catch (\Exception $e) {
+            $output->writeln("<error>" . $e->getMessage() . "</error>");
+        }
+    }
+
+    protected function cmdQueueDelete($input, $output)
+    {
+        $queue = $input->getOption('queue');
+        $ifUnused = $input->getOption('if_unused');
+        $ifEmpty = $input->getOption('if_empty');
+        $nowait = $input->getOption('nowait');
+
+        if (empty($queue)) {
+            $output->writeln("<error>The queue name must not be empty!</error>");
+
+            return;
+        }
+        try {
+            $this->channel->queue_delete($queue, $ifUnused, $ifEmpty, $nowait);
+            $output->writeln("<info>delete queue '$queue'.</info>");
+        } catch (\Exception $e) {
+            $output->writeln("<error>" . $e->getMessage() . "</error>");
+        }
+    }
+
+    protected function cmdQueuePurge($input, $output)
+    {
+        $queue = $input->getOption('queue');
+        $nowait = $input->getOption('nowait');
+
+        if (empty($queue)) {
+            $output->writeln("<error>The queue name must not be empty!</error>");
+
+            return;
+        }
+        try {
+            $this->channel->queue_purge($queue, $nowait);
+            $output->writeln("<info>purge queue '$queue'.</info>");
         } catch (\Exception $e) {
             $output->writeln("<error>" . $e->getMessage() . "</error>");
         }

@@ -58,4 +58,20 @@ Trait MQTrait
             echo $e->getMessage();
         }
     }
+
+    protected function execute(InputInterface $input, OutputInterface $output)
+    {
+        $cmd = $input->getArgument('cmd');
+        $func = "cmd$cmd";
+
+        if (!method_exists($this, $func)) {
+            echo "'$cmd' operation is not exists.\n";
+            exit(1);
+        }
+
+        $this->connectRabbit($input, $output);
+
+        $this->$func($input, $output);
+        $this->closeRabbit();
+    }
 }
